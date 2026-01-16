@@ -53,18 +53,10 @@ class ProductionModeCommand extends AbstractMagentoCommand
         $this->output = $output;
 
         $steps = [
-            fn() => $this->maintenanceModeSet(true),
-            fn() => $this->indexerModeSet(true),
-            fn() => $this->setupUpgrade(),
-            fn() => $this->indexerModeSet(false),
-            fn() => $this->processNonScheduledIndexers(),
             fn() => $this->setProductionMode(),
-            fn() => $this->flushCache(),
             fn() => $this->diCompile(),
-            fn() => $this->flushCache(),
             fn() => $this->deployStaticContent(AreaCodes::FRONTEND),
             fn() => $this->deployStaticContent(AreaCodes::ADMINHTML),
-            fn() => $this->maintenanceModeSet(false)
         ];
 
         foreach ($steps as $step) {
