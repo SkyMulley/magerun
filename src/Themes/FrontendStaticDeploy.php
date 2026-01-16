@@ -49,7 +49,7 @@ class FrontendStaticDeploy extends AbstractMagentoCommand
 
         $step = $this->deployStaticContent(AreaCodes::FRONTEND);
 
-        if ($step() === Command::FAILURE) {
+        if ($step === Command::FAILURE) {
             return Command::FAILURE;
         }
 
