@@ -53,8 +53,6 @@ class ProductionModeCommand extends AbstractMagentoCommand
         $this->output = $output;
 
         $steps = [
-            fn() => $this->setProductionMode(),
-            fn() => $this->diCompile(),
             fn() => $this->deployStaticContent(AreaCodes::FRONTEND),
             fn() => $this->deployStaticContent(AreaCodes::ADMINHTML),
         ];
