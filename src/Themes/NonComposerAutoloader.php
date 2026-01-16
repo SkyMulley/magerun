@@ -36,11 +36,6 @@ class NonComposerAutoloader extends AbstractMagentoCommand
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-        $this->detectMagento($output);
-        if (!$this->initMagento()) {
-            return Command::FAILURE;
-        }
-
         $baseDir = $this->getApplication()->getMagentoRootFolder() . '/';
 
         $globPatterns = require $baseDir . 'app/etc/registration_globlist.php';
