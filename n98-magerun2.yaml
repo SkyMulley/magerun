@@ -19,10 +19,14 @@ commands:
      - Qoliber\Magerun\Themes\DeployLocaleActiveCommand
      # php lib/n98-magerun2/modules/qoliber-magerun/bin/n98-magerun2.phar qoliber:magerun:theme:active
      - Qoliber\Magerun\Themes\DevThemeActiveCommand
-     # php lib/n98-magerun2/modules/qoliber-magerun/bin/n98-magerun2.phar qoliber:magerun:mode:production
-     - Qoliber\Magerun\Themes\ProductionModeCommand
+     # php lib/n98-magerun2/modules/qoliber-magerun/bin/n98-magerun2.phar qoliber:magerun:frontenddeploy
+     - Qoliber\Magerun\Themes\FrontendStaticDeploy
+     # php lib/n98-magerun2/modules/qoliber-magerun/bin/n98-magerun2.phar qoliber:magerun:backenddeploy
+     - Qoliber\Magerun\Themes\BackendStaticDeploy
      # php lib/n98-magerun2/modules/qoliber-magerun/bin/n98-magerun2.phar qoliber:magerun:non-composer-autoloader
      - Qoliber\Magerun\Themes\NonComposerAutoloader
+     # php lib/n98-magerun2/modules/qoliber-magerun/bin/n98-magerun2.phar qoliber:magerun:mode:production
+     - Qoliber\Magerun\Themes\ProductionModeCommand
 
    # php lib/n98-magerun2/modules/qoliber-magerun/bin/n98-magerun2.phar db:dump --strip="@qoliber" --no-tablespaces --compression="gz" -f db.sql
    N98\Magento\Command\Database\DumpCommand:
