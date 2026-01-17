@@ -78,6 +78,8 @@ class FrontendStaticDeploy extends AbstractMagentoCommand
             '-s'      => 'quick',
         ]);
 
+        $this->output->writeln($input->getArguments());
+
         return $this->getApplication()->doRun($input, $this->output);
     }
 
@@ -104,8 +106,9 @@ class FrontendStaticDeploy extends AbstractMagentoCommand
 
         $output = new BufferedOutput();
         $this->getApplication()->doRun($input, $output);
-        $this->output->writeln($output->fetch());
-        $themes = rtrim($output->fetch(), "\n");
+        $fetchedOutput = $output->fetch();
+        $this->output->writeln($fetchedOutput);
+        $themes = rtrim($fetchedOutput, "\n");
         $themes = str_replace('--theme', '', $themes);
         $themes = explode(' ', $themes);
         $this->output->writeln(print_r($themes, true));
