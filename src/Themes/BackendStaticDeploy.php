@@ -47,7 +47,7 @@ class BackendStaticDeploy extends AbstractMagentoCommand
     {
         $this->output = $output;
 
-        $step = $this->deployStaticContent(AreaCodes::FRONTEND);
+        $step = $this->deployStaticContent(AreaCodes::ADMINHTML);
 
         if ($step === Command::FAILURE) {
             return Command::FAILURE;
