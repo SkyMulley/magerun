@@ -78,8 +78,6 @@ class FrontendStaticDeploy extends AbstractMagentoCommand
             '-s'      => 'quick',
         ]);
 
-        $this->output->writeln($input->getArguments());
-
         return $this->getApplication()->doRun($input, $this->output);
     }
 
@@ -107,13 +105,12 @@ class FrontendStaticDeploy extends AbstractMagentoCommand
         $output = new BufferedOutput();
         $this->getApplication()->doRun($input, $output);
         $fetchedOutput = $output->fetch();
-        $this->output->writeln($fetchedOutput);
-        $themes = rtrim($fetchedOutput, "\n");
-        $themes = str_replace('--theme', '', $themes);
-        $themes = explode(' ', $themes);
-        $this->output->writeln(print_r($themes, true));
+        
+        // Extract only lines containing --theme flags
+        preg_match_all('/--theme\s+([^\s]+)/', $fetchedOutput, $matches);
+        $themes = $matches[1] ?? [];
 
-        return array_filter($themes);
+        return $themes;
     }
 
     /**
@@ -140,9 +137,12 @@ class FrontendStaticDeploy extends AbstractMagentoCommand
 
         $output = new BufferedOutput();
         $this->getApplication()->doRun($input, $output);
-        $locales = rtrim($output->fetch(), "\n");
-        $locales = explode(' ', $locales);
+        $fetchedOutput = $output->fetch();
+        
+        // Extract only valid locale codes (e.g., en_US, fr_FR)
+        preg_match_all('/[a-z]{2,3}_[A-Z]{2,4}/', $fetchedOutput, $matches);
+        $locales = $matches[0] ?? [];
 
-        return array_filter($locales);
+        return $locales;
     }
 }
