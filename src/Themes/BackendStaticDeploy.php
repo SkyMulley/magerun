@@ -104,11 +104,13 @@ class BackendStaticDeploy extends AbstractMagentoCommand
 
         $output = new BufferedOutput();
         $this->getApplication()->doRun($input, $output);
-        $themes = rtrim($output->fetch(), "\n");
-        $themes = str_replace('--theme', '', $themes);
-        $themes = explode(' ', $themes);
+        $fetchedOutput = $output->fetch();
+        
+        // Extract only lines containing --theme flags
+        preg_match_all('/--theme\s+([^\s]+)/', $fetchedOutput, $matches);
+        $themes = $matches[1] ?? [];
 
-        return array_filter($themes);
+        return $themes;
     }
 
     /**
@@ -135,9 +137,12 @@ class BackendStaticDeploy extends AbstractMagentoCommand
 
         $output = new BufferedOutput();
         $this->getApplication()->doRun($input, $output);
-        $locales = rtrim($output->fetch(), "\n");
-        $locales = explode(' ', $locales);
+        $fetchedOutput = $output->fetch();
+        
+        // Extract only valid locale codes (e.g., en_US, fr_FR)
+        preg_match_all('/[a-z]{2,3}_[A-Z]{2,4}/', $fetchedOutput, $matches);
+        $locales = $matches[0] ?? [];
 
-        return array_filter($locales);
+        return $locales;
     }
 }

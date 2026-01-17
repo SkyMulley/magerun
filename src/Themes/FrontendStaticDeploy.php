@@ -105,11 +105,9 @@ class FrontendStaticDeploy extends AbstractMagentoCommand
         $output = new BufferedOutput();
         $this->getApplication()->doRun($input, $output);
         $fetchedOutput = $output->fetch();
-        $this->output->writeln($fetchedOutput);
         
         // Extract only lines containing --theme flags
         preg_match_all('/--theme\s+([^\s]+)/', $fetchedOutput, $matches);
-        $this->output->writeln($matches);
         $themes = $matches[1] ?? [];
 
         return $themes;
