@@ -104,9 +104,11 @@ class FrontendStaticDeploy extends AbstractMagentoCommand
 
         $output = new BufferedOutput();
         $this->getApplication()->doRun($input, $output);
+        $this->output->writeln($output->fetch());
         $themes = rtrim($output->fetch(), "\n");
         $themes = str_replace('--theme', '', $themes);
         $themes = explode(' ', $themes);
+        $this->output->writeln(print_r($themes, true));
 
         return array_filter($themes);
     }
