@@ -57,7 +57,9 @@ class NonComposerAutoloader extends AbstractMagentoCommand
 \$registrationFiles = $registrationFilesString;
 
 foreach (\$registrationFiles as \$registrationFile) {
-    require_once \$registrationFile;
+    if (file_exists(\$registrationFile)) {
+        require_once \$registrationFile;
+    }
 }
 PHP;
 
