@@ -89,6 +89,34 @@ class DevThemeActiveCommand extends AbstractMagentoCommand
                 }
             }
 
+            // Get admin theme from Design model if adminhtml area is requested
+            if (is_null($area) || $area === AreaCodes::ADMINHTML) {
+                try {
+                    $design = $objectManager->get(\Magento\Theme\Model\View\Design::class);
+                    $adminTheme = $design->getConfigurationDesignTheme(AreaCodes::ADMINHTML);
+
+                    if ($adminTheme) {
+                        // If it's a theme ID, resolve to theme path
+                        if (is_numeric($adminTheme)) {
+                            $themeRepo = $objectManager->get(\Magento\Framework\View\Design\Theme\ThemeProviderInterface::class);
+                            $theme = $themeRepo->getThemeById($adminTheme);
+                            if ($theme && $theme->getThemePath()) {
+                                $res[] = $theme->getThemePath();
+                            } else {
+                                $res[] = 'Magento/backend';
+                            }
+                        } else {
+                            $res[] = $adminTheme;
+                        }
+                    } else {
+                        $res[] = 'Magento/backend';
+                    }
+                } catch (\Exception $e) {
+                    // Fallback to Magento/backend if detection fails
+                    $res[] = 'Magento/backend';
+                }
+            }
+
             if (!$input->getOption('format')) {
                 $out = array();
 
@@ -96,9 +124,6 @@ class DevThemeActiveCommand extends AbstractMagentoCommand
                     $out[] = '--theme ' . $t;
                 }
 
-                if (is_null($area) || $area === AreaCodes::ADMINHTML) {
-                    $out[] = '--theme Magento/backend';
-                }
                 $output->writeln(implode(' ', array_unique($out)));
             }
 
