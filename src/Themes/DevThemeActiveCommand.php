@@ -89,49 +89,21 @@ class DevThemeActiveCommand extends AbstractMagentoCommand
                 }
             }
 
-            // Get admin theme from Design model if adminhtml area is requested
+            // Get all admin themes from DB if adminhtml area is requested
+            // We deploy all registered admin themes to handle inheritance properly
             if (is_null($area) || $area === AreaCodes::ADMINHTML) {
-                try {
-                    $design = $objectManager->get(\Magento\Theme\Model\View\Design::class);
-                    $output->writeln('<comment>[DEBUG] Design class: ' . get_class($design) . '</comment>');
+                $adminThemesSql = sprintf(
+                    'SELECT DISTINCT theme_path FROM `%s` WHERE area = \'adminhtml\'',
+                    $themeTableName
+                );
+                $adminThemes = $connection->fetchCol($adminThemesSql);
 
-                    $adminTheme = $design->getConfigurationDesignTheme(AreaCodes::ADMINHTML);
-                    $output->writeln('<comment>[DEBUG] getConfigurationDesignTheme returned: ' . var_export($adminTheme, true) . '</comment>');
-                    $output->writeln('<comment>[DEBUG] Type: ' . gettype($adminTheme) . '</comment>');
-
-                    if ($adminTheme) {
-                        // If it's a theme ID, resolve to theme path
-                        if (is_numeric($adminTheme)) {
-                            $output->writeln('<comment>[DEBUG] adminTheme is numeric, resolving ID: ' . $adminTheme . '</comment>');
-                            $themeRepo = $objectManager->get(\Magento\Framework\View\Design\Theme\ThemeProviderInterface::class);
-                            $theme = $themeRepo->getThemeById($adminTheme);
-                            $output->writeln('<comment>[DEBUG] Theme object: ' . ($theme ? get_class($theme) : 'null') . '</comment>');
-                            if ($theme) {
-                                $output->writeln('<comment>[DEBUG] Theme path: ' . var_export($theme->getThemePath(), true) . '</comment>');
-                            }
-                            if ($theme && $theme->getThemePath()) {
-                                $res[] = $theme->getThemePath();
-                            } else {
-                                $output->writeln('<comment>[DEBUG] Falling back to Magento/backend (no theme path)</comment>');
-                                $res[] = 'Magento/backend';
-                            }
-                        } else {
-                            $output->writeln('<comment>[DEBUG] adminTheme is string: ' . $adminTheme . '</comment>');
-                            $res[] = $adminTheme;
-                        }
-                    } else {
-                        $output->writeln('<comment>[DEBUG] adminTheme is empty/null, falling back to Magento/backend</comment>');
-                        $res[] = 'Magento/backend';
+                if (!empty($adminThemes)) {
+                    foreach ($adminThemes as $adminTheme) {
+                        $res[] = $adminTheme;
                     }
-
-                    // Also check what themes exist in the theme table for adminhtml
-                    $adminThemesSql = sprintf('SELECT theme_id, theme_path FROM `%s` WHERE area = \'adminhtml\'', $themeTableName);
-                    $adminThemesInDb = $connection->fetchAll($adminThemesSql);
-                    $output->writeln('<comment>[DEBUG] Admin themes in DB: ' . json_encode($adminThemesInDb) . '</comment>');
-
-                } catch (\Exception $e) {
-                    // Fallback to Magento/backend if detection fails
-                    $output->writeln('<error>[DEBUG] Exception: ' . $e->getMessage() . '</error>');
+                } else {
+                    // Fallback if no admin themes found
                     $res[] = 'Magento/backend';
                 }
             }
