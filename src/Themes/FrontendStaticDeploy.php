@@ -95,17 +95,21 @@ class FrontendStaticDeploy extends AbstractMagentoCommand
             return Command::FAILURE;
         }
 
+        // Expand active themes to include all parent themes
+        $allThemes = $this->expandThemesWithParents($activeThemes);
+        $this->output->writeln('<info>Themes to deploy (including parents): ' . implode(', ', $allThemes) . '</info>');
+
         // Try Go binary if enabled
         if ($useGoBinary) {
             $binaryPath = $this->findGoBinary($goBinaryPath);
             if ($binaryPath !== null) {
                 $this->output->writeln('<info>Using elgentos Go static-deploy binary for accelerated deployment</info>');
-                return $this->deployWithGoBinary($binaryPath, $areaCode, $activeThemes, $activeLocale);
+                return $this->deployWithGoBinary($binaryPath, $areaCode, $allThemes, $activeLocale);
             }
             $this->output->writeln('<comment>Go binary not found, falling back to native Magento deploy</comment>');
         }
 
-        return $this->deployWithMagento($areaCode, $activeThemes, $activeLocale);
+        return $this->deployWithMagento($areaCode, $allThemes, $activeLocale);
     }
 
     /**
@@ -286,6 +290,80 @@ class FrontendStaticDeploy extends AbstractMagentoCommand
         }
 
         return false;
+    }
+
+    /**
+     * Get all parent themes for a given theme (including the theme itself)
+     *
+     * @param string $themePath
+     * @return string[]
+     */
+    private function getThemeWithParents(string $themePath): array
+    {
+        $themes = [$themePath];
+
+        try {
+            $objectManager = ObjectManager::getInstance();
+            $resource = $objectManager->get('Magento\Framework\App\ResourceConnection');
+            $connection = $resource->getConnection();
+            $themeTable = $resource->getTableName('theme');
+
+            // Get theme ID and parent ID
+            $sql = sprintf(
+                'SELECT theme_id, parent_id FROM `%s` WHERE theme_path = ?',
+                $themeTable
+            );
+            $theme = $connection->fetchRow($sql, [$themePath]);
+
+            if (!$theme || empty($theme['parent_id'])) {
+                return $themes;
+            }
+
+            // Traverse parent chain (max 10 levels to prevent infinite loops)
+            $parentId = $theme['parent_id'];
+            $maxDepth = 10;
+            $depth = 0;
+
+            while ($parentId && $depth < $maxDepth) {
+                $parentSql = sprintf(
+                    'SELECT theme_id, parent_id, theme_path FROM `%s` WHERE theme_id = ?',
+                    $themeTable
+                );
+                $parent = $connection->fetchRow($parentSql, [$parentId]);
+
+                if (!$parent || empty($parent['theme_path'])) {
+                    break;
+                }
+
+                $themes[] = $parent['theme_path'];
+                $parentId = $parent['parent_id'];
+                $depth++;
+            }
+        } catch (\Exception $e) {
+            // If traversal fails, return what we have
+        }
+
+        return $themes;
+    }
+
+    /**
+     * Expand active themes to include all parent themes
+     *
+     * @param array $activeThemes
+     * @return array
+     */
+    private function expandThemesWithParents(array $activeThemes): array
+    {
+        $allThemes = [];
+
+        foreach ($activeThemes as $theme) {
+            $themeChain = $this->getThemeWithParents($theme);
+            foreach ($themeChain as $t) {
+                $allThemes[$t] = true; // Use as keys for deduplication
+            }
+        }
+
+        return array_keys($allThemes);
     }
 
     /**
