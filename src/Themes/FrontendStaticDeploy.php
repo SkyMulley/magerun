@@ -36,7 +36,8 @@ class FrontendStaticDeploy extends AbstractMagentoCommand
     private const HYVA_PARENT_THEMES = [
         'Hyva/default',
         'Hyva/reset',
-        "Hyva/default-csp"
+        'Hyva/default-csp',
+        'Hyva/checkout',
     ];
 
     /**
@@ -348,22 +349,40 @@ class FrontendStaticDeploy extends AbstractMagentoCommand
 
     /**
      * Expand active themes to include all parent themes
+     * Returns themes in correct deployment order: parents first, then children
      *
      * @param array $activeThemes
      * @return array
      */
     private function expandThemesWithParents(array $activeThemes): array
     {
-        $allThemes = [];
+        $allThemeChains = [];
 
+        // Collect all theme chains (each chain goes from child to root parent)
         foreach ($activeThemes as $theme) {
             $themeChain = $this->getThemeWithParents($theme);
-            foreach ($themeChain as $t) {
-                $allThemes[$t] = true; // Use as keys for deduplication
+            $allThemeChains[] = $themeChain;
+        }
+
+        // Build ordered list: parents must come before children
+        // We track depth (distance from root) for each theme
+        $themeDepths = [];
+        foreach ($allThemeChains as $chain) {
+            $chainLength = count($chain);
+            foreach ($chain as $index => $theme) {
+                // Depth is distance from root (last item in chain is root, depth 0)
+                $depth = $chainLength - 1 - $index;
+                // Keep the maximum depth if theme appears in multiple chains
+                if (!isset($themeDepths[$theme]) || $themeDepths[$theme] < $depth) {
+                    $themeDepths[$theme] = $depth;
+                }
             }
         }
 
-        return array_keys($allThemes);
+        // Sort by depth ascending (parents/roots first, children last)
+        asort($themeDepths);
+
+        return array_keys($themeDepths);
     }
 
     /**
