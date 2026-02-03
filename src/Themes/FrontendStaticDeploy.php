@@ -7,6 +7,7 @@
 
 namespace Qoliber\Magerun\Themes;
 
+use Magento\Framework\App\ObjectManager;
 use N98\Magento\Command\AbstractMagentoCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\ArrayInput;
@@ -27,6 +28,15 @@ class FrontendStaticDeploy extends AbstractMagentoCommand
     private const GO_BINARY_NAMES = [
         'static-deploy',
         'magento2-static-deploy',
+    ];
+
+    /**
+     * Hyvä parent theme paths that indicate a theme is Hyvä-based
+     */
+    private const HYVA_PARENT_THEMES = [
+        'Hyva/default',
+        'Hyva/reset',
+        "Hyva/default-csp"
     ];
 
     /**
@@ -131,35 +141,151 @@ class FrontendStaticDeploy extends AbstractMagentoCommand
     ): int {
         $magentoRoot = $this->getApplication()->getMagentoRootFolder();
 
-        $command = [
-            $binaryPath,
-            '-f',
-            '-r', $magentoRoot,
-            '-a', $areaCode,
-        ];
+        // Separate Hyvä and Luma themes
+        $hyvaThemes = [];
+        $lumaThemes = [];
 
-        // Add themes
         foreach ($activeThemes as $theme) {
-            $command[] = '-t';
-            $command[] = $theme;
+            if ($this->isHyvaTheme($theme)) {
+                $hyvaThemes[] = $theme;
+                $this->output->writeln("<info>Detected Hyvä theme: $theme</info>");
+            } else {
+                $lumaThemes[] = $theme;
+                $this->output->writeln("<comment>Detected Luma theme: $theme</comment>");
+            }
         }
 
-        // Add locales as positional arguments at the end
-        foreach ($activeLocale as $locale) {
-            $command[] = $locale;
+        $result = Command::SUCCESS;
+
+        // Deploy Hyvä themes with --no-luma-dispatch for fast file copying
+        if (!empty($hyvaThemes)) {
+            $this->output->writeln('<info>Deploying Hyvä themes with fast file copying...</info>');
+            $command = [
+                $binaryPath,
+                '-f',
+                '-r', $magentoRoot,
+                '-a', $areaCode,
+                '--no-luma-dispatch',
+            ];
+
+            foreach ($hyvaThemes as $theme) {
+                $command[] = '-t';
+                $command[] = $theme;
+            }
+
+            foreach ($activeLocale as $locale) {
+                $command[] = $locale;
+            }
+
+            $this->output->writeln('<comment>Running: ' . implode(' ', $command) . '</comment>');
+
+            $process = new Process($command);
+            $process->setTimeout(600);
+            $process->setTty(Process::isTtySupported());
+
+            $exitCode = $process->run(function ($type, $buffer) {
+                $this->output->write($buffer);
+            });
+
+            if ($exitCode !== 0) {
+                $result = Command::FAILURE;
+            }
         }
 
-        $this->output->writeln('<comment>Running: ' . implode(' ', $command) . '</comment>');
+        // Deploy Luma themes (Go binary will dispatch to Magento)
+        if (!empty($lumaThemes)) {
+            $this->output->writeln('<info>Deploying Luma themes...</info>');
+            $command = [
+                $binaryPath,
+                '-f',
+                '-r', $magentoRoot,
+                '-a', $areaCode,
+            ];
 
-        $process = new Process($command);
-        $process->setTimeout(600);
-        $process->setTty(Process::isTtySupported());
+            foreach ($lumaThemes as $theme) {
+                $command[] = '-t';
+                $command[] = $theme;
+            }
 
-        $exitCode = $process->run(function ($type, $buffer) {
-            $this->output->write($buffer);
-        });
+            foreach ($activeLocale as $locale) {
+                $command[] = $locale;
+            }
 
-        return $exitCode === 0 ? Command::SUCCESS : Command::FAILURE;
+            $this->output->writeln('<comment>Running: ' . implode(' ', $command) . '</comment>');
+
+            $process = new Process($command);
+            $process->setTimeout(600);
+            $process->setTty(Process::isTtySupported());
+
+            $exitCode = $process->run(function ($type, $buffer) {
+                $this->output->write($buffer);
+            });
+
+            if ($exitCode !== 0) {
+                $result = Command::FAILURE;
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Check if a theme is Hyvä-based by traversing the parent chain
+     */
+    private function isHyvaTheme(string $themePath): bool
+    {
+        // Direct match
+        if (in_array($themePath, self::HYVA_PARENT_THEMES)) {
+            return true;
+        }
+
+        try {
+            $objectManager = ObjectManager::getInstance();
+            $resource = $objectManager->get('Magento\Framework\App\ResourceConnection');
+            $connection = $resource->getConnection();
+            $themeTable = $resource->getTableName('theme');
+
+            // Get theme ID and parent ID
+            $sql = sprintf(
+                'SELECT theme_id, parent_id FROM `%s` WHERE theme_path = ?',
+                $themeTable
+            );
+            $theme = $connection->fetchRow($sql, [$themePath]);
+
+            if (!$theme || empty($theme['parent_id'])) {
+                return false;
+            }
+
+            // Traverse parent chain (max 10 levels to prevent infinite loops)
+            $parentId = $theme['parent_id'];
+            $maxDepth = 10;
+            $depth = 0;
+
+            while ($parentId && $depth < $maxDepth) {
+                $parentSql = sprintf(
+                    'SELECT theme_id, parent_id, theme_path FROM `%s` WHERE theme_id = ?',
+                    $themeTable
+                );
+                $parent = $connection->fetchRow($parentSql, [$parentId]);
+
+                if (!$parent) {
+                    break;
+                }
+
+                // Check if this parent is a Hyvä theme
+                if (in_array($parent['theme_path'], self::HYVA_PARENT_THEMES)) {
+                    return true;
+                }
+
+                $parentId = $parent['parent_id'];
+                $depth++;
+            }
+        } catch (\Exception $e) {
+            // If detection fails, assume Luma
+            return false;
+        }
+
+        return false;
     }
 
     /**
