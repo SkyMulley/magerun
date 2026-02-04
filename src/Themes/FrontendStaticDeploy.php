@@ -127,7 +127,6 @@ class FrontendStaticDeploy extends AbstractMagentoCommand
             '-t'      => $activeThemes,
             '-l'      => $activeLocale,
             '-f',
-            '-s'      => 'quick',
         ]);
 
         return $this->getApplication()->doRun($input, $this->output);
