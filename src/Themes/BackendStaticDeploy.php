@@ -82,7 +82,12 @@ class BackendStaticDeploy extends AbstractMagentoCommand
         $activeThemes = $this->getActiveThemes($areaCode);
         $activeLocale = $this->getActiveLocale($areaCode);
 
-        if (empty($activeThemes) || empty($activeLocale)) {
+        if (empty($activeThemes)) {
+            $this->output->writeln('<comment>No backend theme detected, falling back to Magento/backend</comment>');
+            $activeThemes = ['Magento/backend'];
+        }
+
+        if (empty($activeLocale)) {
             return Command::FAILURE;
         }
 
