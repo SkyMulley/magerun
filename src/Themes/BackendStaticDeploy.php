@@ -88,7 +88,8 @@ class BackendStaticDeploy extends AbstractMagentoCommand
         }
 
         if (empty($activeLocale)) {
-            return Command::FAILURE;
+            $this->output->writeln('<comment>No admin locale detected, falling back to en_US</comment>');
+            $activeLocale = ['en_US', 'en_GB'];
         }
 
         // Expand active themes to include all parent themes
