@@ -7,6 +7,8 @@
 
 namespace Qoliber\Magerun\Themes;
 
+use Magento\Framework\App\Config\ScopeConfigInterface;
+use Magento\Framework\Locale\Resolver;
 use Magento\Framework\Validator\Locale;
 use Magento\Store\Model\Config\StoreView;
 use Magento\User\Model\ResourceModel\User\Collection as UserCollection;
@@ -19,6 +21,8 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 class DeployLocaleActiveCommand extends AbstractMagentoCommand
 {
+    private const XML_PATH_DEFAULT_LOCALE = 'general/locale/code';
+
     /** @var \Magento\User\Model\ResourceModel\User\Collection  */
     private UserCollection $userCollection;
 
@@ -28,36 +32,53 @@ class DeployLocaleActiveCommand extends AbstractMagentoCommand
     /** @var \Magento\Framework\Validator\Locale  */
     private Locale $locale;
 
+    /** @var \Magento\Framework\App\Config\ScopeConfigInterface  */
+    private ScopeConfigInterface $scopeConfig;
+
     /**
-     * @param \Magento\User\Model\ResourceModel\User\Collection $userCollection
-     * @param \Magento\Store\Model\Config\StoreView $storeView
-     * @param \Magento\Framework\Validator\Locale $locale
-     * @return void
+     * @param UserCollection
+     * @param StoreView
+     * @param Locale
+     * @param ScopeConfigInterface
      */
     public function inject(
         UserCollection $userCollection,
         StoreView $storeView,
-        Locale $locale
+        Locale $locale,
+        ScopeConfigInterface $scopeConfig
     ) {
-       	$this->userCollection = $userCollection;
+        $this->userCollection = $userCollection;
         $this->storeView = $storeView;
         $this->locale = $locale;
+        $this->scopeConfig = $scopeConfig;
     }
 
     /**
-     * Get admin user locales
-     *
      * @return array
      */
     private function getAdminUserInterfaceLocales(): array
     {
-        $locales = [];
+        $locales = [$this->getDefaultAdminLocale()];
 
         foreach ($this->userCollection as $user) {
-            $locales[] = $user->getInterfaceLocale();
+            $locale = $user->getInterfaceLocale();
+
+            if (!empty($locale)) {
+                $locales[] = $locale;
+            }
         }
 
-	    return $locales;
+        return $locales;
+    }
+
+    /**
+     * @return string
+     */
+    private function getDefaultAdminLocale(): string
+    {
+        $locale = $this->scopeConfig->getValue(self::XML_PATH_DEFAULT_LOCALE);
+
+        return !empty($locale) ? (string)$locale : Resolver::DEFAULT_LOCALE;
     }
 
     /**
