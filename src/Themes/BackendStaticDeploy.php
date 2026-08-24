@@ -352,9 +352,14 @@ class BackendStaticDeploy extends AbstractMagentoCommand
         $this->getApplication()->doRun($input, $output);
         $fetchedOutput = $output->fetch();
 
-        // Extract only valid locale codes (e.g., en_US, fr_FR)
-        preg_match_all('/[a-z]{2,3}_[A-Z]{2,4}/', $fetchedOutput, $matches);
-        $locales = $matches[0] ?? [];
+        // Extract only valid locale codes (e.g., en_US, fr_FR, zh_Hans_CN).
+        // Each whitespace-separated token is matched whole: an unanchored
+        // pattern matches zh_Hans_CN from its fourth character and yields
+        // ans_CN, which setup:static-content:deploy then rejects.
+        $tokens = preg_split('/\\s+/', trim($fetchedOutput), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $locales = array_values(array_filter($tokens, static function (string $token): bool {
+            return (bool)preg_match('/^[a-z]{2,3}(?:_[A-Z][a-z]{3})?_[A-Z]{2,4}$/', $token);
+        }));
 
         return $locales;
     }
